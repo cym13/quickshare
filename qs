@@ -40,10 +40,10 @@ Arguments:
 
 import SimpleHTTPServer
 import SocketServer
-from os import chdir
-from docopt import docopt
+from os        import chdir
+from time      import time, sleep
+from docopt    import docopt
 from threading import Lock
-from time import time, sleep
 
 
 class TokenBucket:
@@ -82,7 +82,6 @@ class TokenBucket:
             else:
                 return -self.tokens / self.rate
 
-import shutil
 
 class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     """
@@ -126,23 +125,31 @@ class _TCPServer(SocketServer.TCPServer):
         self.RequestHandlerClass(request, client_address, self, self.rate)
 
 
+def share(directory, port, rate):
+    chdir(directory)
+
+    Handler = HTTPRequestHandler
+    try:
+        httpd = _TCPServer(("", port), Handler, rate)
+    except SocketServer.socket.error:
+        print("Address already in use")
+        print("Trying on port " + str(port + 1))
+        share(directory, port + 1, rate)
+    else:
+        print "Serving at port " + str(port)
+        httpd.serve_forever()
+
+
 def main():
     args = docopt(__doc__)
     share_dir = args['DIRECTORY'] or '.'
     port      = args['--port']    or 8000
     rate      = args['--rate']    or 0
+
     port = int(port)
     rate = int(rate)
 
-    if share_dir:
-        chdir(share_dir)
-
-    Handler = HTTPRequestHandler
-    httpd = _TCPServer(("", port), Handler, rate)
-
-    print "Serving at port " + str(port)
-    httpd.serve_forever()
-
+    share(share_dir, port, rate)
 
 if __name__ == "__main__":
     main()
