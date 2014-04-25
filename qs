@@ -21,9 +21,9 @@
 
 
 """
-Quickly share files using a simple http server.
+Quickly share directories using a simple http server.
 
-Usage: qs [-p PORT] [-r RATE] [DIRECTORY]
+Usage: qs [-h] [-p PORT] [-r RATE] [--no-sf] [DIRECTORY]
 
 Options:
     -h, --help          Print this help and exit.
@@ -31,15 +31,25 @@ Options:
                         Default is 8000
     -r, --rate RATE     Limit upload to RATE in ko/s.
                         Default is 0 meaning no limitation.
+    --no-sf             Do not search a free port if the selected one is taken.
+                        Otherwise, increase the port number until it finds one.
 
 Arguments:
     DIRECTORY           Directory to share.
                         Default is `.'
 """
 
+import sys
 
-import SimpleHTTPServer
-import SocketServer
+# Manage python3 compatibility
+if sys.version_info[0] == 3:
+    import http.server      as SimpleHTTPServer
+    import socketserver     as SocketServer
+else:
+    import SimpleHTTPServer
+    import SocketServer
+
+import socket
 from os        import chdir
 from time      import time, sleep
 from docopt    import docopt
@@ -125,31 +135,46 @@ class _TCPServer(SocketServer.TCPServer):
         self.RequestHandlerClass(request, client_address, self, self.rate)
 
 
-def share(directory, port, rate):
+def share(directory, port, rate, search_free):
     chdir(directory)
 
     Handler = HTTPRequestHandler
     try:
         httpd = _TCPServer(("", port), Handler, rate)
+
     except SocketServer.socket.error:
-        print("Address already in use")
-        print("Trying on port " + str(port + 1))
-        share(directory, port + 1, rate)
+        print("Port already in use: " + str(port))
+
+        if search_free:
+            print("Trying on port " + str(port + 1))
+            share(directory, port + 1, rate, search_free)
+        else:
+            exit(1)
     else:
-        print "Serving at port " + str(port)
+        print("Serving at port " + str(port))
+        print("Local url: http://%s:%s/" % (get_ip(), port))
         httpd.serve_forever()
+
+
+def get_ip():
+    return socket.gethostbyname(socket.gethostname())
 
 
 def main():
     args = docopt(__doc__)
-    share_dir = args['DIRECTORY'] or '.'
-    port      = args['--port']    or 8000
-    rate      = args['--rate']    or 0
+    share_dir = args['DIRECTORY']   or '.'
+    port      = args['--port']      or 8000
+    rate      = args['--rate']      or 0
+    search_free = not args['--no-sf']
 
     port = int(port)
     rate = int(rate)
 
-    share(share_dir, port, rate)
+    try:
+        share(share_dir, port, rate, search_free)
+    except KeyboardInterrupt:
+        print("")
+        exit(0)
 
 if __name__ == "__main__":
     main()
