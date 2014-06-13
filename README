@@ -41,6 +41,17 @@ Dependencies
 
 docopt  https://github.com/docopt/docopt or "pip install docopt"
 
+Install
+=======
+
+The simplest is to use
+
+    pip install qs
+
+or, in this directory,
+
+    python setup.py install
+
 License
 =======
 

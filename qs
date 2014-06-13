@@ -39,6 +39,8 @@ Arguments:
                         Default is `.'
 """
 
+VERSION = "1.0.0"
+
 import sys
 
 # Manage python3 compatibility
@@ -161,7 +163,7 @@ def get_ip():
 
 
 def main():
-    args = docopt(__doc__)
+    args = docopt(__doc__, version=VERSION)
     share_dir = args['DIRECTORY']   or '.'
     port      = args['--port']      or 8000
     rate      = args['--rate']      or 0
