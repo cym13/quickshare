@@ -40,7 +40,7 @@ Arguments:
                         Default is the current directory: `.'
 """
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 
 import sys
@@ -170,8 +170,10 @@ def share(share_queue, port, rate, search_free):
         httpd.serve_forever()
 
     finally:
+        print(path)
         if delete_at_end and 'qstmp_' in path:
-            for each in os.listdir(path):
+            for each in [os.path.join(path, x) for x in os.listdir(path)]:
+                print(each)
                 os.remove(each)
             os.removedirs(path)
 
