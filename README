@@ -21,7 +21,7 @@ everything has a web interface, why should'nt we use it?
 Documentation
 =============
 
-Usage: qs [-h] [-p PORT] [-r RATE] [--no-sf] [DIRECTORY]
+Usage: qs [-h] [-p PORT] [-r RATE] [--no-sf] [FILE]...
 
 Options:
     -h, --help          Print this help and exit.
@@ -33,8 +33,8 @@ Options:
                         Otherwise, increase the port number until it finds one.
 
 Arguments:
-    DIRECTORY           Directory to share.
-                        Default is `.'
+    FILE                Files or directory to share.
+                        Default is the current directory: `.'
 
 Dependencies
 ============

@@ -23,7 +23,7 @@
 """
 Quickly share directories using a simple http server.
 
-Usage: qs [-h] [-p PORT] [-r RATE] [--no-sf] [DIRECTORY]
+Usage: qs [-h] [-p PORT] [-r RATE] [--no-sf] [FILE]...
 
 Options:
     -h, --help          Print this help and exit.
@@ -33,15 +33,23 @@ Options:
                         Default is 0 meaning no limitation.
     --no-sf             Do not search a free port if the selected one is taken.
                         Otherwise, increase the port number until it finds one.
+    --version           Print the current version
 
 Arguments:
-    DIRECTORY           Directory to share.
-                        Default is `.'
+    FILE                Files or directory to share.
+                        Default is the current directory: `.'
 """
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
+
 
 import sys
+import os
+import socket
+import tempfile
+from time      import time, sleep
+from docopt    import docopt
+from threading import Lock
 
 # Manage python3 compatibility
 if sys.version_info[0] == 3:
@@ -50,12 +58,6 @@ if sys.version_info[0] == 3:
 else:
     import SimpleHTTPServer
     import SocketServer
-
-import socket
-from os        import chdir
-from time      import time, sleep
-from docopt    import docopt
-from threading import Lock
 
 
 class TokenBucket:
@@ -137,9 +139,18 @@ class _TCPServer(SocketServer.TCPServer):
         self.RequestHandlerClass(request, client_address, self, self.rate)
 
 
-def share(directory, port, rate, search_free):
-    chdir(directory)
+def share(share_queue, port, rate, search_free):
+    if len(share_queue) == 1 and os.path.isdir(share_queue[0]):
+        path = share_queue[0]
+        delete_at_end = False
 
+    else:
+        path = tempfile.mkdtemp(prefix='qstmp_')
+        delete_at_end = True
+        for each in share_queue:
+            os.symlink(each, os.path.join(path, os.path.basename(each)))
+
+    os.chdir(path)
     Handler = HTTPRequestHandler
     try:
         httpd = _TCPServer(("", port), Handler, rate)
@@ -149,13 +160,21 @@ def share(directory, port, rate, search_free):
 
         if search_free:
             print("Trying on port " + str(port + 1))
-            share(directory, port + 1, rate, search_free)
+            share(share_queue, port + 1, rate, search_free)
         else:
             exit(1)
+
     else:
         print("Serving at port " + str(port))
         print("Local url: http://%s:%s/" % (get_ip(), port))
         httpd.serve_forever()
+
+    finally:
+        if delete_at_end and 'qstmp_' in path:
+            for each in os.listdir(path):
+                os.remove(each)
+            os.removedirs(path)
+
 
 
 def get_ip():
@@ -164,16 +183,17 @@ def get_ip():
 
 def main():
     args = docopt(__doc__, version=VERSION)
-    share_dir = args['DIRECTORY']   or '.'
-    port      = args['--port']      or 8000
-    rate      = args['--rate']      or 0
+    share_queue = args['FILE']        or '.'
+    port        = args['--port']      or 8000
+    rate        = args['--rate']      or 0
     search_free = not args['--no-sf']
 
     port = int(port)
     rate = int(rate)
 
     try:
-        share(share_dir, port, rate, search_free)
+        share_queue = [os.path.abspath(x) for x in share_queue]
+        share(share_queue, port, rate, search_free)
     except KeyboardInterrupt:
         print("")
         exit(0)
