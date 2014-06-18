@@ -31,10 +31,12 @@ Options:
                         Default is 0 meaning no limitation.
     --no-sf             Do not search a free port if the selected one is taken.
                         Otherwise, increase the port number until it finds one.
+    --version           Print the current version
 
 Arguments:
     FILE                Files or directory to share.
                         Default is the current directory: `.'
+                        If '-' is given, read from stdin.
 
 Dependencies
 ============

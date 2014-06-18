@@ -38,9 +38,10 @@ Options:
 Arguments:
     FILE                Files or directory to share.
                         Default is the current directory: `.'
+                        If '-' is given, read from stdin.
 """
 
-VERSION = "1.1.1"
+VERSION = "1.2.0"
 
 
 import sys
@@ -122,6 +123,7 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 sleep(self.bucket.consume(length))
             buf = fsrc.read(length)
             if not buf:
+                print("-- sent --")
                 break
             fdst.write(buf)
 
@@ -170,10 +172,8 @@ def share(share_queue, port, rate, search_free):
         httpd.serve_forever()
 
     finally:
-        print(path)
         if delete_at_end and 'qstmp_' in path:
             for each in [os.path.join(path, x) for x in os.listdir(path)]:
-                print(each)
                 os.remove(each)
             os.removedirs(path)
 
@@ -192,6 +192,9 @@ def main():
 
     port = int(port)
     rate = int(rate)
+
+    if share_queue == ['-']:
+        share_queue = [x.rstrip('\n') for x in sys.stdin.readlines()]
 
     try:
         share_queue = [os.path.abspath(x) for x in share_queue]
