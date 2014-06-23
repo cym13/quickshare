@@ -41,14 +41,14 @@ Arguments:
                         If '-' is given, read from stdin.
 """
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 
-import sys
 import os
+import sys
+import time
 import socket
 import tempfile
-from time      import time, sleep
 from docopt    import docopt
 from threading import Lock
 
@@ -69,7 +69,7 @@ class TokenBucket:
     def __init__(self):
         self.tokens = 0
         self.rate = 0
-        self.last = time()
+        self.last = time.time()
         self.lock = Lock()
 
     def set_rate(self, rate):
@@ -82,7 +82,7 @@ class TokenBucket:
             if not self.rate:
                 return 0
 
-            now = time()
+            now = time.time()
             lapse = now - self.last
             self.last = now
             self.tokens += lapse * self.rate
@@ -120,10 +120,10 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         """
         while 1:
             if self.rate != 0:
-                sleep(self.bucket.consume(length))
+                time.sleep(self.bucket.consume(length))
             buf = fsrc.read(length)
             if not buf:
-                print("-- sent --")
+                print(" - - [%s] SENT -" % time.strftime("%d/%b/%Y %H:%M:%S"))
                 break
             fdst.write(buf)
 
