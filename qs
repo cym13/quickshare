@@ -39,9 +39,10 @@ Arguments:
     FILE                Files or directory to share.
                         Default is the current directory: `.'
                         If '-' is given, read from stdin.
+                        If 'index.html' is found in the directory, it is served.
 """
 
-VERSION = "1.2.1"
+VERSION = "1.2.2"
 
 
 import os
