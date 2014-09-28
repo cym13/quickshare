@@ -178,7 +178,6 @@ def share(share_queue, port, rate, search_free):
             os.removedirs(path)
 
 
-
 def get_ip():
     return socket.gethostbyname(socket.gethostname())
 
