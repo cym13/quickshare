@@ -42,7 +42,7 @@ Arguments:
                         If 'index.html' is found in the directory, it is served.
 """
 
-VERSION = "1.2.2"
+VERSION = "1.3.0"
 
 
 import os
@@ -143,6 +143,8 @@ class _TCPServer(SocketServer.TCPServer):
 
 
 def share(share_queue, port, rate, search_free):
+    filename=""
+
     if len(share_queue) == 1 and os.path.isdir(share_queue[0]):
         path = share_queue[0]
         delete_at_end = False
@@ -152,6 +154,9 @@ def share(share_queue, port, rate, search_free):
         delete_at_end = True
         for each in share_queue:
             os.symlink(each, os.path.join(path, os.path.basename(each)))
+
+        if len(share_queue) == 1:
+            filename = os.path.basename(share_queue[0])
 
     os.chdir(path)
     Handler = HTTPRequestHandler
@@ -169,7 +174,7 @@ def share(share_queue, port, rate, search_free):
 
     else:
         print("Serving at port " + str(port))
-        print("Local url: http://%s:%s/" % (get_ip(), port))
+        print("Local url: http://%s:%s/%s" % (get_ip(), port, filename))
         httpd.serve_forever()
 
     finally:
