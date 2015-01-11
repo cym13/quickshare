@@ -23,12 +23,15 @@
 """
 Quickly share directories using a simple http server.
 
-Usage: qs [-h] [-p PORT] [-r RATE] [--no-sf] [FILE]...
+Usage: qs [-h] [-P] [-p PORT] [-r RATE] [--no-sf] [FILE]...
 
 Options:
     -h, --help          Print this help and exit.
     -p, --port PORT     Port on which the server is listenning.
                         Default is 8000
+    -P, --progress      Show progress.
+                        I don't advise to use it if you plan to have more
+                        than one download at a time.
     -r, --rate RATE     Limit upload to RATE in ko/s.
                         Default is 0 meaning no limitation.
     --no-sf             Do not search a free port if the selected one is taken.
@@ -50,6 +53,7 @@ import sys
 import time
 import socket
 import tempfile
+from math      import floor
 from docopt    import docopt
 from threading import Lock
 
@@ -60,6 +64,35 @@ if sys.version_info[0] == 3:
 else:
     import SimpleHTTPServer
     import SocketServer
+
+
+PROGRESS_IMAGE = """
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::::::::::::::::##############                              :::::::::::::::::::
+############################  ##############################  :::::::::::::::::
+#########################  ######???????????????????????######  :::::::::::::::
+=========================  ##????()??????????????    ()?????##  ::::    :::::::
+------------=============  ##??????????????????  ;;;;  ?????##  ::  ;;;;  :::::
+-------------------------  ##??????????()??????  ;;;;;;?????##    ;;;;;;  :::::
+-------------------------  ##??????????????????  ;;;;;;         ;;;;;;;;  :::::
+++++++++++++-------------  ##??????????????????  ;;;;;;;;;;;;;;;;;;;;;;;  :::::
++++++++++++++++++++++++++  ##????????????()??  ;;;;;;;;;;;;;;;;;;;;;;;;;;;  :::
++++++++++++++++++    ;;;;  ##??()????????????  ;;;;;;@@  ;;;;;;;;@@  ;;;;;  :::
+~~~~~~~~~~~~~++++;;;;;;;;  ##????????????????  ;;;;;;    ;;;  ;;;    ;;;;;  :::
+~~~~~~~~~~~~~~~  ;;  ~~~~  ####??????()??????  ;;[];;;;;;;;;;;;;;;;;;;;;[]  :::
+$$$$$$$$$$$$$~~~~  ~~~~~~  ######?????????????  ;;;;;;              ;;;;  :::::
+$$$$$$$$$$$$$$$$$$$$$$$$$    ###################  ;;;;;;;;;;;;;;;;;;;;  :::::::
+$$$$$$$$$$$$$$$$$$$$$$$  ;;;;                                       :::::::::::
+:::::::::::::$$$$$$$$$$  ;;;;  ::  ;;  ::::::::::::  ;;  ::  ;;;;  ::::::::::::
+:::::::::::::::::::::::      ::::::    :::::::::::::     ::::      ::::::::::::
+::::::::::::::::NN::::NN::YY::::YY:::AAAAAA:::NN::::NN:::!!::::::::::::::::::::
+::::::::::::::::NNNN::NN::YY::::YY::AA::::AA::NNNN::NN:::!!::::::::::::::::::::
+::::::::::::::::NNNN::NN::YY::::YY::AA::::AA::NNNN::NN:::!!::::::::::::::::::::
+::::::::::::::::NN::NNNN::::YYYY::::AAAAAAAA::NN::NNNN:::!!::::::::::::::::::::
+::::::::::::::::NN::NNNN:::::YY:::::AA::::AA::NN::NNNN:::::::::::::::::::::::::
+::::::::::::::::NN::::NN:::::YY:::::AA::::AA::NN::::NN:::!!::::::::::::::::::::
+"""
+
 
 
 class TokenBucket:
@@ -104,7 +137,8 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     SimpleHTTPRequestHandler with overiden methods to include rate limit.
     """
 
-    def __init__(self, request, client_address, server, rate):
+    def __init__(self, request, client_address, server, rate, show_progress):
+        self.show_progress  = show_progress
         self.rate           = rate * 1024
         self.bucket         = TokenBucket()
         self.bucket.set_rate(self.rate)
@@ -119,10 +153,31 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         copy data from file-like object fsrc to file-like object fdst
         overidden to include token bucket rate limiting
         """
+        read_size = 0
+        last_line = 0
+        tmp_lline = 0
+        img_size  = len(PROGRESS_IMAGE)
+
+        try:
+            fsize = len(fsrc.getvalue())
+        except AttributeError:
+            fsize = os.path.getsize(fsrc.name)
+
         while 1:
             if self.rate != 0:
                 time.sleep(self.bucket.consume(length))
-            buf = fsrc.read(length)
+
+            buf        = fsrc.read(length)
+            read_size += len(buf)
+
+            if self.show_progress:
+                if (read_size * img_size / fsize) > last_line:
+                    tmp_lline = int(last_line)
+                    last_line = int(floor(read_size * img_size / fsize))
+                    for l in range(tmp_lline, last_line):
+                        sys.stdout.write(PROGRESS_IMAGE[l])
+                    sys.stdout.flush()
+
             if not buf:
                 print(" - - [%s] SENT -" % time.strftime("%d/%b/%Y %H:%M:%S"))
                 break
@@ -131,18 +186,23 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 class _TCPServer(SocketServer.TCPServer):
     def __init__(self, server_address, RequestHandlerClass, rate,
-                 bind_and_activate=True):
+                 show_progress, bind_and_activate=True):
         self.rate = rate;
+        self.show_progress = show_progress;
         SocketServer.TCPServer.__init__(self,
                                         server_address,
                                         RequestHandlerClass,
                                         bind_and_activate)
 
     def finish_request(self, request, client_address):
-        self.RequestHandlerClass(request, client_address, self, self.rate)
+        self.RequestHandlerClass(request,
+                                 client_address,
+                                 self,
+                                 self.rate,
+                                 self.show_progress)
 
 
-def share(share_queue, port, rate, search_free):
+def share(share_queue, port, rate, search_free, show_progress):
     filename=""
 
     if len(share_queue) == 1 and os.path.isdir(share_queue[0]):
@@ -161,14 +221,14 @@ def share(share_queue, port, rate, search_free):
     os.chdir(path)
     Handler = HTTPRequestHandler
     try:
-        httpd = _TCPServer(("", port), Handler, rate)
+        httpd = _TCPServer(("", port), Handler, rate, show_progress)
 
     except SocketServer.socket.error:
         print("Port already in use: " + str(port))
 
         if search_free:
             print("Trying on port " + str(port + 1))
-            share(share_queue, port + 1, rate, search_free)
+            share(share_queue, port + 1, rate, search_free, show_progress)
         else:
             exit(1)
 
@@ -190,10 +250,11 @@ def get_ip():
 
 def main():
     args = docopt(__doc__, version=VERSION)
-    share_queue = args['FILE']        or '.'
-    port        = args['--port']      or 8000
-    rate        = args['--rate']      or 0
-    search_free = not args['--no-sf']
+    share_queue   = args['FILE']        or '.'
+    port          = args['--port']      or 8000
+    rate          = args['--rate']      or 0
+    search_free   = not args['--no-sf']
+    show_progress = args["--progress"]
 
     port = int(port)
     rate = int(rate)
@@ -203,7 +264,7 @@ def main():
 
     try:
         share_queue = [os.path.abspath(x) for x in share_queue]
-        share(share_queue, port, rate, search_free)
+        share(share_queue, port, rate, search_free, show_progress)
     except KeyboardInterrupt:
         print("")
         exit(0)
