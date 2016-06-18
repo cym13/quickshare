@@ -245,7 +245,7 @@ def share(share_queue, port, rate, search_free, show_progress):
 
 
 def get_ip():
-    return socket.gethostbyname(socket.gethostname())
+    return socket.gethostbyname(socket.getfqdn())
 
 
 def main():
