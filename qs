@@ -42,7 +42,7 @@ Arguments:
                         If 'index.html' is found in the directory, it is served.
 """
 
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 
 
 import os
