@@ -21,23 +21,25 @@ everything has a web interface, why should'nt we use it?
 Documentation
 =============
 
-Usage: qs [-h] [-p PORT] [-r RATE] [--no-sf] [FILE]...
+::
 
-Options:
-    -h, --help          Print this help and exit.
-    -p, --port PORT     Port on which the server is listenning.
-                        Default is 8000
-    -r, --rate RATE     Limit upload to RATE in ko/s.
-                        Default is 0 meaning no limitation.
-    --no-sf             Do not search a free port if the selected one is taken.
-                        Otherwise, increase the port number until it finds one.
-    --version           Print the current version
+    Usage: qs [-h] [-p PORT] [-r RATE] [--no-sf] [FILE]...
 
-Arguments:
-    FILE                Files or directory to share.
-                        Default is the current directory: `.'
-                        If '-' is given, read from stdin.
-                        If 'index.html' is found in the directory, it is served.
+    Options:
+        -h, --help       Print this help and exit.
+        -p, --port PORT  Port on which the server is listenning.
+                         Default is 8000
+        -r, --rate RATE  Limit upload to RATE in ko/s.
+                         Default is 0 meaning no limitation.
+        --no-sf          Do not search a free port if the selected one is taken.
+                         Otherwise, increase the port number until it finds one.
+        --version        Print the current version
+
+    Arguments:
+        FILE             Files or directory to share.
+                         Default is the current directory: `.'
+                         If '-' is given, read from stdin.
+                         If 'index.html' is found in the directory, it is served.
 
 Dependencies
 ============
@@ -49,9 +51,13 @@ Install
 
 The simplest is to use
 
+::
+
     pip install qs
 
 or, in this directory,
+
+::
 
     python setup.py install
 
@@ -66,7 +72,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 Contact
 =======
 
-Main developper: Cédric Picard
-Email:           cedric.picard@efrei.net
-Twitter:         @Cym13
-GPG:             383A 76B9 D68D 2BD6 9D2B  4716 E3B9 F4FE 5CED 42CB
+::
+
+    Main developper: Cédric Picard
+    Email:           cedric.picard@efrei.net
