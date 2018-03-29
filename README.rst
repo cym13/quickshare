@@ -27,7 +27,7 @@ Documentation
 
     Options:
         -h, --help       Print this help and exit.
-        -p, --port PORT  Port on which the server is listenning.
+        -p, --port PORT  Port on which the server is listening.
                          Default is 8000
         -r, --rate RATE  Limit upload to RATE in ko/s.
                          Default is 0 meaning no limitation.
