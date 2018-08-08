@@ -42,7 +42,7 @@ Arguments:
                         If 'index.html' is found in the directory, it is served.
 """
 
-VERSION = "1.4.1"
+VERSION = "1.4.2"
 
 
 import os
@@ -104,12 +104,15 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     SimpleHTTPRequestHandler with overiden methods to include rate limit.
     """
 
-    def __init__(self, request, client_address, server, rate):
+    def __init__(self, request, client_address, server, rate, path):
         self.rate           = rate * 1024
         self.bucket         = TokenBucket()
+        self.directory      = path
         self.bucket.set_rate(self.rate)
-        SocketServer.BaseRequestHandler.__init__(self, request,
-                                                 client_address, server)
+        SocketServer.BaseRequestHandler.__init__(self,
+                                                 request,
+                                                 client_address,
+                                                 server)
 
     def copyfile(self, source, outputfile):
         self.copyfileobj(source, outputfile)
@@ -130,16 +133,25 @@ class HTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 
 class _TCPServer(SocketServer.TCPServer):
-    def __init__(self, server_address, RequestHandlerClass, rate,
+    def __init__(self,
+                 server_address,
+                 RequestHandlerClass,
+                 rate,
+                 path,
                  bind_and_activate=True):
-        self.rate = rate;
+        self.rate = rate
+        self.path = path
         SocketServer.TCPServer.__init__(self,
                                         server_address,
                                         RequestHandlerClass,
                                         bind_and_activate)
 
     def finish_request(self, request, client_address):
-        self.RequestHandlerClass(request, client_address, self, self.rate)
+        self.RequestHandlerClass(request,
+                                 client_address,
+                                 self,
+                                 self.rate,
+                                 self.path)
 
 
 def share(share_queue, port, rate, search_free):
@@ -159,9 +171,9 @@ def share(share_queue, port, rate, search_free):
             filename = os.path.basename(share_queue[0])
 
     os.chdir(path)
-    Handler = HTTPRequestHandler
+
     try:
-        httpd = _TCPServer(("", port), Handler, rate)
+        httpd = _TCPServer(("", port), HTTPRequestHandler, rate, path)
 
     except SocketServer.socket.error:
         print("Port already in use: " + str(port))
